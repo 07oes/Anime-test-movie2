@@ -750,14 +750,11 @@ async function showAnimeDetails(animeId) {
             // Функция включения запасных iframe-плееров, если нативный недоступен
             const showFallback = () => {
                 const mirrors = [
-                    { name: 'Kodik 1', url: `https://kodik.cc/find-player?shikimoriID=${animeId}` },
-                    { name: 'Kodik 2', url: `https://kodik.info/find-player?shikimoriID=${animeId}` },
-                    { name: 'Kodik 3', url: `https://kodik.biz/find-player?shikimoriID=${animeId}` },
-                    { name: 'Kodik 4', url: `https://kikodik.net/find-player?shikimoriID=${animeId}` },
-                    { name: 'Kodik 5', url: `https://kikodik.cc/find-player?shikimoriID=${animeId}` },
-                    { name: 'Yohoho 1', url: `https://yohoho.cc/?title=${encodeURIComponent(anime.title)}` },
-                    { name: 'Yohoho 2', url: `https://4k-video.net/?title=${encodeURIComponent(anime.title)}` },
-                    { name: 'Yohoho 3', url: `https://ahoy.yohoho.cc/?title=${encodeURIComponent(anime.title)}` }
+                    { name: 'Kinobox', url: `https://kinobox.tv/kinobox/player?shikimori=${animeId}` },
+                    { name: 'Kodik', url: `https://kodik.info/find-player?shikimori_id=${animeId}` },
+                    { name: 'Kikodik', url: `https://kikodik.cc/find-player?shikimori_id=${animeId}` },
+                    { name: 'Yohoho', url: `https://yohoho.cc/?title=${encodeURIComponent(anime.title)}` },
+                    { name: '4K Video', url: `https://4k-video.net/?title=${encodeURIComponent(anime.title)}` }
                 ];
 
                 const buttonsHtml = mirrors.map((m, i) => `
