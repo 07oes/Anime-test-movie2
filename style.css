@@ -1,383 +1,844 @@
-html, body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    overscroll-behavior: none;
-    touch-action: none;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    /* Убираем выделение текста при тапах на телефоне */
-    -webkit-user-select: none; 
-    user-select: none;
-}
-
-/* Устанавливаем строгий черный фон */
+/* Убираем отступы и полосы прокрутки */
 body {
-    background-color: #000000;
-    position: relative;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    margin: 0;
+    overflow-x: hidden; /* Запрещаем только горизонтальную прокрутку */
+    overflow-y: auto;   /* Разрешаем скроллить страницу вниз */
+    background-color: #000;
 }
 
-/* Контейнер для свечения в шапке */
-.glow-container {
+/* Утилита для переключения экранов в SPA (Single Page Application) */
+.hidden {
+    display: none !important;
+}
+
+/* Создаем бесконечный фиксированный размытый фон с цветами картинки */
+body::before {
+    content: "";
+    position: fixed;
+    top: -10%; left: -10%; right: -10%; bottom: -10%; /* Запас по краям, чтобы скрыть белую рамку от блюра */
+    background-image: var(--bg-image);
+    background-size: cover;
+    background-position: center;
+    filter: blur(40px) brightness(0.6); /* Сильное размытие + затемнение для читаемости кнопок */
+    z-index: -2; /* На самый задний план */
+    pointer-events: none;
+}
+
+/* Контейнер с четкой картинкой (теперь он скроллится вместе со страницей) */
+#anime-covers {
     position: absolute;
     top: 0;
     left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -1; /* Опускаем картинку на самый задний план, позади кнопок и контента */
+}
+
+/* Стили для обложки, чтобы она заполняла экран без искажений */
+#anime-covers img {
     width: 100%;
     height: 100%;
-    pointer-events: none;
+    object-fit: cover;
+    
+    /* Плавный бесшовный переход: четкая картинка растворяется в размытом фоне внизу */
+    mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+}
+
+/* Контейнер для кнопок */
+#action-buttons {
+    position: -webkit-sticky; /* Для поддержки Safari */
+    position: sticky;
+    top: 20px; /* Останавливается в 20px от верхнего края при скролле */
+    margin-top: 700px; /* Изначальный отступ вниз */
+    margin-left: 5%; /* С левой стороны с аккуратным отступом */
+    display: flex;
+    gap: 15px; /* Расстояние между кнопками */
+    z-index: 100; /* Делаем z-index больше, чтобы при скролле кнопки всегда были поверх списка */
+}
+
+/* Красивый дизайн кнопок (Стекломорфизм) */
+.btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    padding: 12px 24px;
+    font-size: 36px;
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+    backdrop-filter: blur(2px); /* Добавляем эффект матового стекла */
+    -webkit-backdrop-filter: blur(2px); /* Для поддержки в браузере Safari */
+    -webkit-tap-highlight-color: transparent; /* Убираем синее выделение при нажатии на телефоне */
+}
+
+/* Эффект при наведении на кнопку */
+.btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-2px); /* Легкое поднятие кнопки вверх */
+}
+
+/* Стиль для активной выбранной кнопки */
+.btn.active {
+    background: #ffffff;
+    color: #000000; /* Черный текст на белом фоне для контраста */
+}
+
+/* Контейнер для нижнего списка обложек */
+#bottom-anime-list {
+    margin-top: 40px; /* Располагаем сразу под кнопками */
+    margin-left: 5%;
+    margin-right: 5%;
+    display: flex;
+    flex-wrap: wrap; /* Позволяет обложкам перескакивать на новую строку */
+    justify-content: center; /* Центрируем обложки внутри блока */
+    gap: 25px; /* Увеличили отступ между обложками на ПК */
+    padding-bottom: 20px;
+    z-index: 10;
+    transition: opacity 0.3s ease; /* Плавное изменение прозрачности при загрузке */
+}
+
+/* Стили для мини-обложек */
+.mini-cover {
+    height: 350px; /* Увеличили высоту обложек для ПК */
+    aspect-ratio: 2 / 3; /* Жестко задаем пропорции классического вертикального постера */
+    object-fit: cover; /* Обрезаем излишки по бокам у нестандартных "широких" картинок */
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+    flex-shrink: 0; /* Чтобы картинки не сжимались по ширине */
+    -webkit-tap-highlight-color: transparent; /* Убираем синее выделение при нажатии на обложку */
+}
+
+.mini-cover:hover {
+    transform: scale(1.05); /* Увеличиваем при наведении */
+}
+
+/* --- Стили для отдельной страницы аниме --- */
+.anime-page-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+.anime-page-cover {
+    max-width: 400px;
+    width: 100%;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+}
+
+.anime-page-title {
+    color: #ffffff;
+    font-size: 36px; /* Увеличили размер шрифта */
+    text-align: left; /* Выравнивание по левому краю */
+    width: 100%; /* Растягиваем на ширину контейнера */
+    margin: 25px 0 10px 0; /* Отступ сверху и немного снизу до текста */
+}
+
+/* Блок с информацией (релиз и жанры) */
+.anime-meta {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 15px;
+    box-sizing: border-box;
+}
+.meta-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 12px 16px;
+    border-radius: 12px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+.meta-rating {
+    background: rgba(0, 0, 0, 0.5); /* Полупрозрачный фон */
+    color: #ffffff;
+    font-weight: bold;
+    font-size: 16px;
+    padding: 6px 10px;
+    border: 2px solid #ffffff; /* Белая рамка, как у официальных рейтингов */
+    border-radius: 6px;
+    text-shadow: none; /* Убираем тень у текста внутри плашки */
+    flex-shrink: 0; /* Чтобы рамка не сжималась */
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+.meta-text {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.meta-release {
+    color: hsl(0 0 90);
+    font-size: 16px;
+}
+.meta-genres {
+    color: hsl(0 0 70);
+    font-size: 15px;
+}
+.meta-stats {
+    display: flex;
+    align-items: center; /* Выравниваем эмодзи и текст по центру */
+    gap: 15px; /* Отступ между эмодзи и текстом */
+    flex-shrink: 0; /* Запрещаем блоку сжиматься, если название жанров длинное */
+    background: rgba(0, 0, 0, 0.3); /* Добавляем фон */
+    padding: 12px 16px; /* Внутренние отступы */
+    border-radius: 12px; /* Закругляем углы */
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+.meta-emoji {
+    width: 32px; /* Задаем размер картинке-эмодзи */
+    height: 32px;
+    object-fit: contain;
+}
+.meta-stats-text {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    text-align: left;
+}
+.meta-score {
+    color: hsl(0 0 90);
+    font-size: 16px;
+}
+.meta-episodes {
+    color: hsl(0 0 70);
+    font-size: 15px;
+}
+
+/* Контейнер для скриншотов */
+.anime-screenshots-container {
+    display: flex;
+    gap: 12px;
+    width: 100vw; /* Растягиваем контейнер от левого до правого края экрана */
+    padding: 10px 20px 15px 20px; /* Добавлены отступы сверху и снизу, чтобы hover-увеличение не обрезалось */
+    box-sizing: border-box; /* Чтобы отступы не ломали ширину экрана */
+    overflow-x: auto; /* Включаем горизонтальную прокрутку */
+    margin-top: 5px; /* Уменьшен отступ для компенсации нового верхнего padding */
+    cursor: grab; /* Курсор в виде руки */
+    user-select: none; /* Запрещаем выделение элементов при перетаскивании */
+}
+.anime-screenshots-container::-webkit-scrollbar {
+    display: none; /* Прячем ползунок для эффекта мобильного свайпа */
+}
+
+/* Принудительно меняем курсор на "сжатую руку" при перетаскивании */
+.anime-screenshots-container.is-dragging,
+.anime-screenshots-container.is-dragging *,
+.anime-characters-container.is-dragging,
+.anime-characters-container.is-dragging *,
+.anime-themes-container.is-dragging,
+.anime-themes-container.is-dragging *,
+.anime-seasons-container.is-dragging,
+.anime-seasons-container.is-dragging * {
+    cursor: grabbing !important;
+}
+
+.anime-screenshot {
+    height: 200px; /* Высота скриншота */
+    border-radius: 12px;
+    flex-shrink: 0; /* Запрещаем сжиматься, чтобы можно было скроллить */
+    object-fit: cover;
+    -webkit-user-drag: none; /* Запрещаем браузеру перетягивать саму картинку */
+    transition: transform 0.2s ease;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5); /* Добавляем тень для 3D-эффекта */
+    transform: translateZ(0); /* Аппаратное ускорение (фикс бага с обрезкой границ) */
+    will-change: transform;
+}
+.anime-screenshot:hover {
+    transform: scale(1.05) translateZ(0); /* Увеличение с фиксом бага */
+}
+
+/* Контейнер для трейлера в ленте */
+.anime-trailer-container {
+    position: relative;
+    height: 200px; /* Трейлер должен совпадать по высоте со скриншотами */
+    aspect-ratio: 16 / 9; /* Горизонтальный формат видео */
+    flex-shrink: 0;
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5); /* Добавляем тень */
+    transform: translateZ(0); /* Фикс бага Safari */
+    will-change: transform;
+}
+.anime-trailer-container:hover {
+    transform: scale(1.05) translateZ(0);
+}
+.anime-trailer-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    -webkit-user-drag: none; /* Запрещаем браузеру перетягивать саму картинку */
+}
+.trailer-play-btn {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 40px; height: 40px;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    border-radius: 50%;
+    display: flex; justify-content: center; align-items: center;
+    font-size: 18px; padding-left: 4px; box-sizing: border-box; /* Смещаем иконку ровно в центр */
+    backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+}
+
+/* Стили для кнопок сезонов */
+.anime-seasons-container {
+    display: flex;
+    gap: 12px;
+    width: 100vw;
+    padding: 5px 20px 15px 20px;
+    box-sizing: border-box;
+    overflow-x: auto;
+    user-select: none;
+}
+.anime-seasons-container::-webkit-scrollbar {
+    display: none;
+}
+.season-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    padding: 10px 24px;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+}
+.season-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-2px);
+}
+.season-btn.active {
+    background: #ffffff;
+    color: #000000;
+}
+
+/* Кнопка "Назад" */
+.back-btn {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    width: 54px;
+    height: 54px;
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 0;
-    overflow: hidden;
+    font-size: 20px;
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    transition: all 0.3s ease;
+}
+.back-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
 }
 
-/* Органичное "живое" пятно */
-.aurora-blob {
-    position: absolute;
-    width: 60vw;
-    height: 60vw;
-    max-width: 500px;
-    max-height: 500px;
-    
-    background: linear-gradient(
-        45deg,
-        #ff0055,
-        #ff9900,
-        #ffea00,
-        #00ff55,
-        #00aaff,
-        #7700ff,
-        #ff00aa
-    );
-    background-size: 400% 400%;
-    
-    filter: blur(40px);
-    opacity: 0.9;
-    
-    animation: 
-        gradient-flow 12s ease infinite,
-        blob-shape 10s ease-in-out infinite alternate;
-    
-    transform: translateZ(0);
+/* Описание сюжета */
+.anime-synopsis {
+    color: #dddddd;
+    font-size: 16px;
+    line-height: 1.6;
+    margin-top: 20px;
+    width: 100%;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8); /* Легкая тень, чтобы текст не сливался со светлым фоном */
 }
 
-/* Второе пятно */
-.second-blob {
-    width: 30vw;
-    height: 30vw;
-    max-width: 300px;
-    max-height: 300px;
-    
-    background: linear-gradient(
-        -45deg,
-        #00f2fe 0%, 
-        #4facfe 50%, 
-        #f093fb 100%
-    );
-    opacity: 0.9;
-    mix-blend-mode: screen;
-    animation: 
-        gradient-flow 10s ease infinite reverse,
-        blob-shape-2 8s ease-in-out infinite alternate;
+/* Секция персонажей */
+.section-title {
+    color: #ffffff;
+    font-size: 22px;
+    margin: 25px 20px 5px 20px; /* Уменьшили нижний отступ, чтобы компенсировать padding контейнера */
+    text-align: left;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
 }
 
-@keyframes gradient-flow {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+.anime-characters-container {
+    display: flex;
+    gap: 15px;
+    width: 100vw;
+    padding: 10px 20px 15px 20px; /* Отступы для масштабирования музыки */
+    box-sizing: border-box;
+    overflow-x: auto;
+    cursor: grab;
+    user-select: none;
+}
+.anime-characters-container::-webkit-scrollbar {
+    display: none;
 }
 
-@keyframes blob-shape {
-    0% {
-        border-radius: 20% 80% 30% 70% / 60% 20% 80% 40%;
-        transform: rotate(0deg) scale(1) translateZ(0);
-    }
-    33% {
-        border-radius: 80% 20% 70% 30% / 30% 70% 30% 70%;
-        transform: rotate(120deg) scale(1.15) translateZ(0);
-    }
-    66% {
-        border-radius: 40% 60% 20% 80% / 80% 40% 60% 20%;
-        transform: rotate(240deg) scale(0.85) translateZ(0);
-    }
-    100% {
-        border-radius: 20% 80% 30% 70% / 60% 20% 80% 40%;
-        transform: rotate(360deg) scale(1) translateZ(0);
-    }
-}
-
-@keyframes blob-shape-2 {
-    0% {
-        border-radius: 70% 30% 80% 20% / 20% 80% 30% 70%;
-        transform: rotate(360deg) scale(1.2) translateZ(0);
-    }
-    33% {
-        border-radius: 30% 70% 20% 80% / 70% 30% 80% 20%;
-        transform: rotate(240deg) scale(0.8) translateZ(0);
-    }
-    66% {
-        border-radius: 80% 20% 60% 40% / 40% 60% 20% 80%;
-        transform: rotate(120deg) scale(1.1) translateZ(0);
-    }
-    100% {
-        border-radius: 70% 30% 80% 20% / 20% 80% 30% 70%;
-        transform: rotate(0deg) scale(1.2) translateZ(0);
-    }
-}
-
-/* Информационная карточка со стеклянным эффектом */
-.glass-panel {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 320px;
-    padding: 40px 30px;
-    border-radius: 40px;
-    background: hsla(0, 0%, 0%, 0.2);
-    backdrop-filter: blur(30px);
-    -webkit-backdrop-filter: blur(60%);
-    border: 1px solid #ffffff0f;
-    border-top: 1px solid #ffffff24;
-    border-left: 1px solid #ffffff24;
-    z-index: 10;
-    text-align: center;
-    color: var(--tg-theme-text-color, white); /* Адаптация под цвет текста Telegram */
+.character-card {
     display: flex;
     flex-direction: column;
     align-items: center;
-}
-
-/* Место для аватарки */
-.avatar-container {
-    margin-bottom: 20px;
-}
-
-.avatar-placeholder {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 32px;
-    font-weight: bold;
-    color: white;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-    background-position: center;
-}
-
-.glass-panel h2 {
-    margin: 0 0 12px;
-    font-weight: 600;
-    font-size: 26px;
-    letter-spacing: 0.5px;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-}
-
-.subtitle {
-    margin: 0 0 32px;
-    font-size: 14px;
-    color: var(--tg-theme-hint-color, rgba(255, 255, 255, 0.6));
-    line-height: 1.5;
-}
-
-/* Основная кнопка */
-.tg-login-btn {
-    width: 100%;
-    padding: 16px;
-    border: none;
-    border-radius: 50px;
-    background: var(--tg-theme-button-color, linear-gradient(45deg, #5e5757, #0a91ff));
-    color: var(--tg-theme-button-text-color, white);
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    box-shadow: 0 4px 15px rgba(120, 127, 133, 0.3);
-    transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
-}
-
-/* Если переменная телеграма не сработала и применился градиент */
-.tg-login-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(79, 172, 254, 0.5);
-    filter: brightness(1.1);
-}
-
-.tg-login-btn:active {
-    transform: translateY(1px);
-    box-shadow: 0 2px 10px rgba(79, 172, 254, 0.3);
-    filter: brightness(0.95);
-}
-
-/* Главная страница */
-.main-page {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 20;
-    display: block;
-    color: var(--tg-theme-text-color, white);
-}
-
-/* Анимированное свечение сверху для главного экрана */
-.header-glow {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 150px;
-    pointer-events: none;
-    z-index: 0;
-    /* Размытие волн добавлено прямо сюда */
-    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4));
-}
-.header-glow::before,
-.header-glow::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-size: 300% 300%;
-    /* Волна поднята на 30px вверх */
-    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 250' preserveAspectRatio='none'%3E%3Cpath d='M 0 150 C 250 210, 250 90, 500 150 C 750 210, 750 90, 1000 150 L 1000 0 L 0 0 Z' fill='black'/%3E%3C/svg%3E");
-    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 250' preserveAspectRatio='none'%3E%3Cpath d='M 0 150 C 250 210, 250 90, 500 150 C 750 210, 750 90, 1000 150 L 1000 0 L 0 0 Z' fill='black'/%3E%3C/svg%3E");
-    -webkit-mask-repeat: repeat-x;
-    mask-repeat: repeat-x;
-}
-
-.header-glow::before {
-background: linear-gradient(-45deg, #ff0000, #ff7f00, #ffff00, #00ff00, #00bfff, #0000ff, #8b00ff);    opacity: 1;
-    /* Волна поднята на 30px вверх */
-    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 250' preserveAspectRatio='none'%3E%3Cpath d='M 0 135 C 250 185, 250 85, 500 135 C 750 185, 750 85, 1000 135 L 1000 0 L 0 0 Z' fill='black'/%3E%3C/svg%3E");
-    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 250' preserveAspectRatio='none'%3E%3Cpath d='M 0 135 C 250 185, 250 85, 500 135 C 750 185, 750 85, 1000 135 L 1000 0 L 0 0 Z' fill='black'/%3E%3C/svg%3E");
-    -webkit-mask-size: 1000px 100%;
-    mask-size: 1000px 100%;
-animation: 
-        gradient-flow 10s ease infinite reverse,
-        wave-move-2 20s linear infinite reverse,
-        color-shift 15s linear infinite;
-}
-
-.header-glow::after {
-background: linear-gradient(45deg, #ff0000, #ff7f00, #ffff00, #00ff00, #00bfff, #0000ff, #8b00ff);    opacity: 1;
-    mix-blend-mode: screen;
-    -webkit-mask-size: 1000px 100%;
-    mask-size: 1000px 100%;
-    animation: 
-        gradient-flow 12s ease infinite,
-        wave-move-1 16s linear infinite,
-        color-shift 20s linear infinite; /* Новое переливание с другой скоростью */
-}
-
-@keyframes wave-move-1 {
-    0% { -webkit-mask-position: 0 0; mask-position: 0 0; }
-    100% { -webkit-mask-position: 1000px 0; mask-position: 1000px 0; }
-}
-
-@keyframes wave-move-2 {
-    0% { -webkit-mask-position: 0 0; mask-position: 0 0; }
-    100% { -webkit-mask-position: 1000px 0; mask-position: 1000px 0; }
-}
-
-@keyframes color-shift {
-    0% { filter: hue-rotate(0deg) blur(4px); }
-    100% { filter: hue-rotate(360deg) blur(4px); }
-}
-
-.main-header {
-    box-sizing: border-box;
-    padding: 16px 20px;
-
-    border-bottom: 1px solid #ffffff0e;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 72px;
-    position: relative;
-    z-index: 1;
-}
-
-.header-content {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-    align-items: center;
-    width: 100%;
-    max-width: 500px; /* Максимальная ширина для совместного блока */
-}
-
-.main-title {
-    grid-column: 2;
-    margin: 0;
-    font-size: 22px;
-    font-weight: 600;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-    white-space: nowrap; /* Защита от переноса текста */
+    width: 110px; /* Расширяем карточку под новую аватарку */
+    flex-shrink: 0;
     text-align: center;
+    transition: transform 0.2s ease;
 }
-
-.header-avatar {
-    grid-column: 3;
-    justify-self: end;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 18px;
+.character-card:hover {
+    transform: scale(1.05); /* Увеличение персонажей при наведении */
+}
+.character-img {
+    width: 100px; /* Увеличиваем размер аватарки */
+    height: 100px;
+    border-radius: 50%; /* Круглые аватарки для персонажей */
+    object-fit: cover;
+    margin-bottom: 8px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    -webkit-user-drag: none; /* Запрещаем браузеру перетягивать саму картинку */
+}
+.character-name {
+    color: #ffffff;
+    font-size: 13px;
     font-weight: bold;
-    color: white;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-    background-position: center;
-    background-size: cover;
-    cursor: pointer;
-    flex-shrink: 0; /* Чтобы аватарка не сжималась */
+    line-height: 1.2;
+    margin-bottom: 4px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* Ограничиваем длинные имена двумя строчками */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.character-role {
+    color: #aaaaaa;
+    font-size: 12px;
 }
 
-/* Плавающая кнопка плюс (FAB) */
-.fab-btn {
+/* Секция музыки Spotify */
+.anime-themes-container {
+    display: flex;
+    gap: 15px;
+    width: 100vw;
+    padding: 10px 20px 15px 20px; /* Отступы для масштабирования персонажей */
+    box-sizing: border-box;
+    overflow-x: auto;
+    cursor: grab;
+    user-select: none;
+}
+.anime-themes-container::-webkit-scrollbar {
+    display: none;
+}
+.theme-card {
+    display: flex;
+    flex-direction: column;
+    width: 120px;
+    flex-shrink: 0;
+    text-decoration: none; /* Убираем подчеркивание у ссылки */
+    transition: transform 0.2s ease;
+}
+.theme-card:hover {
+    transform: scale(1.05); /* Увеличение при наведении */
+}
+.theme-cover-wrapper {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    margin-bottom: 8px;
+}
+.theme-cover {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    -webkit-user-drag: none;
+}
+.theme-type-badge {
     position: absolute;
-    bottom: 40px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    background: var(--tg-theme-button-color, linear-gradient(45deg, #0a91ff, #5e5757));
-    color: var(--tg-theme-button-text-color, white);
+    top: 6px;
+    left: 6px;
+    background: rgba(0,0,0,0.8);
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 3px 6px;
+    border-radius: 6px;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+.theme-title {
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: bold;
+    line-height: 1.2;
+    margin-bottom: 4px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.theme-artist {
+    color: #aaaaaa;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Всплывающее окно для картинок */
+.image-modal-overlay {
+    display: none; /* Скрыто по умолчанию */
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 2000;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+.image-modal-overlay.show {
+    display: flex; /* Показываем, когда добавлен этот класс */
+}
+.close-image-btn {
+    position: absolute;
+    top: 20px; right: 30px;
+    font-size: 40px; color: #fff;
+    cursor: pointer; z-index: 2001;
+}
+
+/* Единый размер для трейлера и скриншотов, чтобы стрелочки их не перекрывали */
+img#full-media, img#full-media-new,
+iframe#full-media, iframe#full-media-new {
+    width: 80vw; /* Занимает 80% ширины, оставляя по 10% по бокам для стрелочек */
+    max-width: 1200px;
+    aspect-ratio: 16 / 9; /* Строгие пропорции 16:9 для всех типов медиа */
+    max-height: 80vh;
+    object-fit: contain; /* Картинка аккуратно впишется в этот прямоугольник */
     border: none;
-    font-size: 36px;
-    font-weight: 300;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+    position: absolute; /* Для эффекта слайдера */
+    background-color: #000;
+}
+
+/* Стрелочки переключения картинок в модалке */
+.nav-image-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 40px; 
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer; 
+    z-index: 2001;
+    padding: 10px; /* Уменьшаем невидимые отступы, чтобы кнопка была компактнее */
+    transition: color 0.3s ease, transform 0.3s ease;
+    user-select: none;
+}
+.nav-image-btn:hover {
+    color: #ffffff;
+    transform: translateY(-50%) scale(1.2); /* Легкое увеличение при наведении */
+}
+.left-btn { left: 3vw; } /* Располагаем стрелочки в безопасной пустой зоне сбоку */
+.right-btn { right: 3vw; }
+
+/* --- Стили для Музыкального Плеера --- */
+.music-modal-content {
+    background: rgba(20, 20, 20, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    width: 90%;
+    max-width: 450px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+    position: relative;
+}
+.music-modal-header {
+    display: flex; padding: 20px;
+    background: rgba(0, 0, 0, 0.4);
+    align-items: center; gap: 15px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.music-modal-header img {
+    width: 150px; height: 150px;
+    border-radius: 12px; object-fit: cover;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+}
+.music-modal-info { display: flex; flex-direction: column; gap: 6px; overflow: hidden; }
+.music-modal-info h3 {
+    margin: 0; color: #ffffff; font-size: 18px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.music-modal-info p {
+    margin: 0; color: #aaaaaa; font-size: 14px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.music-track-list {
+    flex: 1; overflow-y: auto; padding: 10px;
+    display: flex; flex-direction: column;
+}
+.music-track-list::-webkit-scrollbar { width: 6px; }
+.music-track-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+.music-track-item {
+    display: flex; align-items: center; padding: 25px; gap: 12px;
+    border-radius: 12px; cursor: pointer; transition: background 0.2s ease; color: #fff;
+    position: relative; overflow: hidden; z-index: 1;
+}
+/* Содержимое трека поверх прогресс-бара */
+.music-track-item > * { position: relative; z-index: 2; }
+.track-progress {
+    position: absolute !important; top: 0; left: 0; bottom: 0; width: 0%;
+    background: rgba(255, 69, 58, 0.25); /* Полупрозрачный красный цвет заполнения */
+    z-index: 0 !important;
+    transition: width 0.1s linear; /* Плавное движение полосы */
+    pointer-events: none;
+}
+.music-track-item:hover { background: rgba(255, 255, 255, 0.05); }
+.music-track-item.playing { background: rgba(255, 69, 58, 0.05); } /* Слегка подсвечиваем фон при старте */
+.music-track-item.playing .track-title { color: #ff453a; }
+.track-number { width: 20px; text-align: right; color: #777; font-size: 14px; font-weight: bold; }
+.track-title { flex: 1; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.track-play-icon { display: flex; justify-content: center; align-items: center; color: #fff; width: 28px; opacity: 0.5; }
+.music-track-item:hover .track-play-icon, .music-track-item.playing .track-play-icon { opacity: 1; }
+.music-track-item.playing .track-play-icon { color: #ff453a; }
+
+/* Адаптация для мобильных телефонов (ширина экрана 600px и меньше) */
+@media (max-width: 600px) {
+    /* Настраиваем контейнер кнопок для горизонтального скролла */
+    #action-buttons {
+        margin-left: 0; /* Убираем левый отступ для мобилок */
+        width: 100%; /* Растягиваем на всю ширину экрана */
+        box-sizing: border-box; /* Чтобы отступы padding не увеличивали ширину */
+        overflow-x: auto; /* Включаем прокрутку по горизонтали */
+        padding-top: 5px; /* Даем место сверху, чтобы кнопки не обрезались при прыжке */
+        padding-bottom: 5px; /* Запас места снизу для теней и анимации */
+        padding-left: 5%; /* Переносим левый отступ внутрь, чтобы скролл уходил за экран */
+        padding-right: 5%; /* Оставляем красивый отступ после последней кнопки */
+    }
+    #action-buttons::-webkit-scrollbar {
+        display: none; /* Прячем ползунок, чтобы скролл выглядел как мобильный свайп */
+    }
+    .btn {
+        font-size: 20px; /* Слегка увеличили размер текста для телефона */
+        padding: 10px 24px; /* Сделали кнопки чуть больше и удобнее для нажатия */
+        flex-shrink: 0; /* Запрещаем кнопкам сжиматься, заставляя их выходить за край */
+    }
+
+    #bottom-anime-list {
+        gap: 16px; /* Увеличили отступы между обложками на телефоне */
+    }
+    .mini-cover {
+        height: auto; /* Отключаем фиксированную высоту */
+        width: calc(50% - 8px); /* Учитываем новый отступ в 16px (половина от 16 = 8) */
+        aspect-ratio: 2 / 3; /* Сохраняем классические пропорции постера (ширина к высоте) */
+        object-fit: cover;
+    }
+
+    .anime-page-title {
+        font-size: 26px; /* Чуть уменьшаем размер шрифта на телефонах */
+    }
+    
+    .meta-rating {
+        font-size: 14px;
+        padding: 4px 8px;
+    }
+
+    .meta-release {
+        font-size: 15
+    px; /* Чуть уменьшаем для мобилок */
+    }
+    .meta-genres {
+        font-size: 14px;
+    }
+
+    .meta-emoji {
+        width: 26px; /* Уменьшаем размер картинки на мобильных */
+        height: 26px;
+    }
+    
+    .meta-score {
+        font-size: 15px; /* Уменьшаем размер для мобильных */
+    }
+    .meta-episodes {
+        font-size: 14px;
+    }
+
+    .anime-screenshot {
+        height: 140px; /* Делаем скриншоты крупнее на телефоне */
+    }
+
+    .anime-trailer-container {
+        height: 140px; /* Трейлер должен совпадать по высоте со скриншотами */
+    }
+
+    .back-btn {
+        top: 15px;
+        left: 15px;
+        width: 38px;
+        height: 38px;
+        font-size: 18px;
+    }
+
+    .anime-synopsis {
+        font-size: 15px;
+    }
+
+    /* Прячем стрелочки на мобильных телефонах */
+    .nav-image-btn {
+        display: none;
+    }
+}
+
+
+.nsfw-blur {
+    filter: blur(10px);
+    transition: filter 0.3s ease; /* Плавное снятие размытия */
+    border-radius: 12px;
+    clip-path: inset(0 round 12px); /* Делает края размытия четкими и закругленными */
+}
+
+.view-all-card {
+    height: 200px; /* Совпадает с высотой миниатюр */
+    aspect-ratio: 1; /* Делает карточку квадратной */
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
     display: flex;
     justify-content: center;
     align-items: center;
+    color: #fff;
+    font-size: 16px;
+    font-weight: bold;
     cursor: pointer;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-    transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
-    padding: 0;
-    line-height: 1;
+    flex-shrink: 0;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    transition: background 0.3s ease, transform 0.2s ease;
+    transform: translateZ(0);
+    will-change: transform;
+}
+.view-all-card:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.05) translateZ(0);
+}
+@media (max-width: 600px) {
+    .view-all-card {
+        height: 140px; /* Подстраиваем под высоту миниатюр на мобилках */
+    }
 }
 
-.fab-btn:hover {
-    transform: translateX(-50%) scale(1.05);
-    filter: brightness(1.1);
+/* Окно подтверждения возраста */
+.age-modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 3000;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
 }
-
-.fab-btn:active {
-    transform: translateX(-50%) scale(0.95);
+.age-modal-overlay.show {
+    display: flex;
 }
+.age-modal-content {
+    background: rgba(30, 30, 30, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    width: 85%;
+    max-width: 400px;
+    padding: 25px;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+    color: #fff;
+}
+.age-modal-text {
+    font-size: 18px;
+    line-height: 1.5;
+    margin-bottom: 25px;
+}
+.age-modal-buttons {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+}
+.age-btn {
+    flex: 1; padding: 12px; font-size: 16px; font-weight: bold;
+    border-radius: 10px; cursor: pointer; border: none; transition: all 0.2s ease;
+}
+.age-btn-close { background: rgba(255, 255, 255, 0.1); color: #fff; }
+.age-btn-close:hover { background: rgba(255, 255, 255, 0.2); }
+.age-btn-accept { background: #ff453a; color: #fff; }
+.age-btn-accept:hover { background: #ff5e55; }
 
+/* --- Сетка Фан-артов --- */
+.fanart-grid-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 1900; /* Ниже полноэкранной галереи, которая 2000 */
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+.fanart-grid-overlay.show {
+    display: flex;
+}
+.fanart-grid-content {
+    background: rgba(20, 20, 20, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    width: 90%;
+    max-width: 1000px;
+    height: 80vh;
+    display: flex; flex-direction: column; overflow: hidden;
+    backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+    position: relative;
+}
+.fanart-grid-header {
+    padding: 20px; background: rgba(0, 0, 0, 0.4);
+    border-bottom: 1px solid rgba(255,255,255,0.05); color: #fff; text-align: center;
+}
+.fanart-grid-header h3 { margin: 0; font-size: 20px; }
+.fanart-grid {
+    flex: 1; overflow-y: auto; padding: 20px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px;
+}
+.fanart-grid::-webkit-scrollbar { width: 8px; }
+.fanart-grid::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+.fanart-grid-item {
+    width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px;
+    cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5); background: rgba(255,255,255,0.05);
+}
+.fanart-grid-item:hover { transform: scale(1.05); box-shadow: 0 6px 15px rgba(0,0,0,0.7); }
+@media (max-width: 600px) { .fanart-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; padding: 10px; } }
