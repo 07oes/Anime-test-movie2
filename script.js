@@ -762,11 +762,10 @@ async function showAnimeDetails(animeId) {
                     </div>
                     <iframe 
                         id="anime-iframe-player"
-                        src="https://kodik.cc/find-player?shikimoriID=${animeId}" 
+                        src="https://kodik.info/find-player?shikimoriID=${animeId}" 
                         style="width: 100%; aspect-ratio: 16 / 9; border: none; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); background: #000;" 
                         allowfullscreen 
-                        allow="autoplay *; fullscreen *"
-                        referrerpolicy="no-referrer">
+                        allow="autoplay *; fullscreen *">
                     </iframe>
                     <div style="color: #888; font-size: 11px; text-align: center; margin-top: 8px;">
                         Если видео не грузится, выберите другой Источник.
@@ -778,12 +777,12 @@ async function showAnimeDetails(animeId) {
                 const iframe = document.getElementById('anime-iframe-player');
 
                 btn1.onclick = () => {
-                    iframe.src = `https://kodik.cc/find-player?shikimoriID=${animeId}`;
+                    iframe.src = `https://kodik.info/find-player?shikimoriID=${animeId}`;
                     btn1.style.background = '#ffffff'; btn1.style.color = '#000'; btn1.style.border = 'none';
                     btn2.style.background = 'rgba(255,255,255,0.15)'; btn2.style.color = '#fff'; btn2.style.border = '1px solid rgba(255,255,255,0.2)';
                 };
                 btn2.onclick = () => {
-                    iframe.src = `https://kodik.info/find-player?shikimoriID=${animeId}`;
+                    iframe.src = `https://kikodik.cc/find-player?shikimoriID=${animeId}`;
                     btn2.style.background = '#ffffff'; btn2.style.color = '#000'; btn2.style.border = 'none';
                     btn1.style.background = 'rgba(255,255,255,0.15)'; btn1.style.color = '#fff'; btn1.style.border = '1px solid rgba(255,255,255,0.2)';
                 };
