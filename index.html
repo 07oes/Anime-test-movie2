@@ -3,78 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Spectrum Aura</title>
+    
+    <!-- ВАЖНО: Подключаем SDK для Telegram Mini Apps -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    
-    <!-- ГЛАВНЫЙ ЭКРАН -->
-    <div id="main-view">
-        <div id="anime-covers"></div>
-        
-        <div id="action-buttons">
-            <button class="btn active">Новинки</button>
-            <button class="btn">Популярное</button>
-            <button class="btn">Рекомендации</button>
-        </div>
-        
-        <div id="bottom-anime-list"></div>
+    <!-- Контейнер для центрального свечения -->
+    <div class="glow-container">
+        <div class="aurora-blob"></div>
+        <div class="aurora-blob second-blob"></div>
     </div>
 
-    <!-- ЭКРАН ПРОСМОТРА АНИМЕ (скрыт по умолчанию) -->
-    <div id="details-view" class="hidden">
-        <button class="back-btn" onclick="closeAnimeDetails()">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transform: translateX(-1px);">
-                <polyline points="15 18 9 12 15 6"></polyline>
-            </svg>
+    <!-- Информационное окно Mini App -->
+    <div class="glass-panel" id="user-card" style="display: none;">
+        <div class="avatar-container">
+            <!-- Сюда будем подставлять фото, если оно есть, или инициалы -->
+            <div id="user-avatar" class="avatar-placeholder">?</div>
+        </div>
+        
+        <h2 id="greeting">Welcome!</h2>
+        <p class="subtitle" id="user-info">Loading your profile...</p>
+        
+        <button class="tg-login-btn" id="main-btn">
+            Continue
         </button>
-        <div id="anime-detail" class="anime-page-container"></div>
-        
-        <!-- Всплывающее окно для просмотра скриншотов во весь экран -->
-        <div id="image-modal" class="image-modal-overlay">
-            <span id="close-image-modal" class="close-image-btn">&times;</span>
-            <span id="prev-image-btn" class="nav-image-btn left-btn">&#10094;</span>
-            <span id="next-image-btn" class="nav-image-btn right-btn">&#10095;</span>
-        </div>
-
-        <!-- Всплывающее окно музыкального альбома/сингла -->
-        <div id="music-modal" class="image-modal-overlay">
-            <div class="music-modal-content">
-                <span id="close-music-modal" class="close-image-btn" style="top: 10px; right: 20px;">&times;</span>
-                <div class="music-modal-header" id="music-modal-header">
-                    <img id="music-modal-cover" src="" alt="Cover">
-                    <div class="music-modal-info">
-                        <h3 id="music-modal-title">Загрузка...</h3>
-                        <p id="music-modal-artist"></p>
-                    </div>
-                </div>
-                <div id="music-modal-tracklist" class="music-track-list"></div>
-            </div>
-        </div>
-
-        <!-- Всплывающее окно 18+ -->
-        <div id="age-disclaimer-modal" class="age-modal-overlay">
-            <div class="age-modal-content">
-                <div class="age-modal-text">Галерея фан-артов может содержать материалы не пригодные лицам, младше 18 лет!</div>
-                <div class="age-modal-buttons">
-                    <button id="age-close-btn" class="age-btn age-btn-close">Закрыть</button>
-                    <button id="age-accept-btn" class="age-btn age-btn-accept">Подтвердить</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Всплывающее окно галереи (Сетка) -->
-        <div id="fanart-grid-modal" class="fanart-grid-overlay">
-            <div class="fanart-grid-content">
-                <span id="close-fanart-grid" class="close-image-btn" style="top: 10px; right: 20px;">&times;</span>
-                <div class="fanart-grid-header">
-                    <h3>Fan Arts Gallery</h3>
-                </div>
-                <div id="fanart-grid-container" class="fanart-grid"></div>
-            </div>
-        </div>
     </div>
 
-    <script src="script.js"></script>
+    <!-- Главная страница (Main Page) -->
+    <div class="main-page" id="main-page" style="display: none;">
+        <!-- Статичное свечение для шапки -->
+        <div class="header-glow"></div>
+        
+        <div class="main-header">
+            <div class="header-content">
+                <h1 class="main-title">Sets of words</h1>
+                <div id="main-avatar" class="header-avatar">?</div>
+            </div>
+        </div>
+        
+        <button class="fab-btn" id="add-btn">
+            +
+        </button>
+    </div>
+
+<script src="script.js"></script>
 </body>
 </html>
