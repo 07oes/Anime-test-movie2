@@ -749,43 +749,58 @@ async function showAnimeDetails(animeId) {
             
             // Функция включения запасных iframe-плееров, если нативный недоступен
             const showFallback = () => {
+                const mirrors = [
+                    { name: 'Kodik 1', url: `https://kodik.cc/find-player?shikimoriID=${animeId}` },
+                    { name: 'Kodik 2', url: `https://kodik.info/find-player?shikimoriID=${animeId}` },
+                    { name: 'Kodik 3', url: `https://kodik.biz/find-player?shikimoriID=${animeId}` },
+                    { name: 'Kodik 4', url: `https://kikodik.net/find-player?shikimoriID=${animeId}` },
+                    { name: 'Kodik 5', url: `https://kikodik.cc/find-player?shikimoriID=${animeId}` },
+                    { name: 'Yohoho 1', url: `https://yohoho.cc/?title=${encodeURIComponent(anime.title)}` },
+                    { name: 'Yohoho 2', url: `https://4k-video.net/?title=${encodeURIComponent(anime.title)}` },
+                    { name: 'Yohoho 3', url: `https://ahoy.yohoho.cc/?title=${encodeURIComponent(anime.title)}` }
+                ];
+
+                const buttonsHtml = mirrors.map((m, i) => `
+                    <button class="mirror-btn" data-url="${m.url}" style="background: ${i === 0 ? '#ffffff' : 'rgba(255,255,255,0.15)'}; color: ${i === 0 ? '#000' : '#fff'}; border: ${i === 0 ? 'none' : '1px solid rgba(255,255,255,0.2)'}; padding: 8px 16px; border-radius: 20px; font-size: 13px; cursor: pointer; font-weight: bold; flex-shrink: 0; outline: none; backdrop-filter: blur(5px);">
+                        ${m.name}
+                    </button>
+                `).join('');
+
                 playerContainer.innerHTML = `
                     <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 15px; margin-bottom: 15px; text-align: center; backdrop-filter: blur(5px);">
                         <p style="color: #dddddd; font-size: 13px; margin-top: 0; margin-bottom: 0; line-height: 1.4;">
                             Озвучка не найдена в основной базе. Загружены сторонние плееры.<br>
-                            <span style="color: #aaaaaa; font-size: 11px;">(Если плееры выдают ошибку сети, включите VPN)</span>
+                            <span style="color: #aaaaaa; font-size: 11px;">(Если плеер выдает ошибку, переключайте зеркала ниже)</span>
                         </p>
                     </div>
-                    <div style="display: flex; gap: 10px; margin-bottom: 12px; overflow-x: auto; user-select: none;">
-                        <button id="btn-src-1" style="background: #ffffff; color: #000; border: none; padding: 8px 16px; border-radius: 20px; font-size: 13px; cursor: pointer; font-weight: bold; flex-shrink: 0; outline: none;">Источник 1</button>
-                        <button id="btn-src-2" style="background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 20px; font-size: 13px; cursor: pointer; font-weight: bold; flex-shrink: 0; backdrop-filter: blur(5px); outline: none;">Источник 2</button>
+                    <div id="mirror-buttons" style="display: flex; gap: 10px; margin-bottom: 12px; overflow-x: auto; user-select: none;">
+                        ${buttonsHtml}
                     </div>
                     <iframe 
                         id="anime-iframe-player"
-                        src="https://kodik.info/find-player?shikimoriID=${animeId}" 
+                        src="${mirrors[0].url}" 
                         style="width: 100%; aspect-ratio: 16 / 9; border: none; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); background: #000;" 
                         allowfullscreen 
                         allow="autoplay *; fullscreen *">
                     </iframe>
-                    <div style="color: #888; font-size: 11px; text-align: center; margin-top: 8px;">
-                        Если видео не грузится, выберите другой Источник.
-                    </div>
                 `;
                 
-                const btn1 = document.getElementById('btn-src-1');
-                const btn2 = document.getElementById('btn-src-2');
+                const btns = playerContainer.querySelectorAll('.mirror-btn');
                 const iframe = document.getElementById('anime-iframe-player');
 
-                btn1.onclick = () => {
-                    iframe.src = `https://kodik.info/find-player?shikimoriID=${animeId}`;
-                    btn1.style.background = '#ffffff'; btn1.style.color = '#000'; btn1.style.border = 'none';
-                    btn2.style.background = 'rgba(255,255,255,0.15)'; btn2.style.color = '#fff'; btn2.style.border = '1px solid rgba(255,255,255,0.2)';
-                };
-                btn2.onclick = () => {
-                    iframe.src = `https://kikodik.cc/find-player?shikimoriID=${animeId}`;
-                    btn2.style.background = '#ffffff'; btn2.style.color = '#000'; btn2.style.border = 'none';
-                    btn1.style.background = 'rgba(255,255,255,0.15)'; btn1.style.color = '#fff'; btn1.style.border = '1px solid rgba(255,255,255,0.2)';
-                };
+                btns.forEach(btn => {
+                    btn.onclick = () => {
+                        iframe.src = btn.getAttribute('data-url');
+                        btns.forEach(b => {
+                            b.style.background = 'rgba(255,255,255,0.15)';
+                            b.style.color = '#fff';
+                            b.style.border = '1px solid rgba(255,255,255,0.2)';
+                        });
+                        btn.style.background = '#ffffff';
+                        btn.style.color = '#000';
+                        btn.style.border = 'none';
+                    };
+                });
             };
 
             // Пытаемся загрузить нативный плеер Anilibria
