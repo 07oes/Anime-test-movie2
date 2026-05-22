@@ -780,6 +780,11 @@ async function showAnimeDetails(animeId) {
                         allowfullscreen 
                         allow="autoplay *; fullscreen *">
                     </iframe>
+                    <div style="text-align: center; margin-top: 12px;">
+                        <a id="open-external-btn" href="${mirrors[0].url}" target="_blank" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #ffffff; padding: 10px 20px; border-radius: 30px; text-decoration: none; font-size: 13px; font-weight: bold; display: inline-block; transition: all 0.2s ease; backdrop-filter: blur(5px);">
+                            🌐 Открыть плеер в новой вкладке
+                        </a>
+                    </div>
                 `;
                 
                 const btns = playerContainer.querySelectorAll('.mirror-btn');
@@ -787,7 +792,10 @@ async function showAnimeDetails(animeId) {
 
                 btns.forEach(btn => {
                     btn.onclick = () => {
-                        iframe.src = btn.getAttribute('data-url');
+                        const url = btn.getAttribute('data-url');
+                        iframe.src = url;
+                        document.getElementById('open-external-btn').href = url; // Обновляем ссылку для новой вкладки
+
                         btns.forEach(b => {
                             b.style.background = 'rgba(255,255,255,0.15)';
                             b.style.color = '#fff';
