@@ -29,8 +29,6 @@ let fanartCurrentPage = 1;
 let isFetchingFanarts = false;
 let noMoreFanarts = false;
 let globalFanartsMedia = [];
-let globalAnimeYearCache = {}; // Кеш для годов выхода
-let globalAnimeTypeCache = {}; // Кеш для типов аниме
 
 /* ==========================================================================
    ИНИЦИАЛИЗАЦИЯ
@@ -201,7 +199,7 @@ function setupCategoryButtons() {
 /* ==========================================================================
    ЛОГИКА ЭКРАНА ИНФОРМАЦИИ (SPA НАВИГАЦИЯ)
    ========================================================================== */
-async function showAnimeDetails(animeId, passedRelations = [], isRelatedSwitch = false) {
+async function showAnimeDetails(animeId, isRelatedSwitch = false) {
     const container = document.getElementById('anime-detail');
 
     if (!isRelatedSwitch) {
@@ -305,13 +303,8 @@ async function showAnimeDetails(animeId, passedRelations = [], isRelatedSwitch =
             .then(res => res.ok ? res.json() : { data: { openings: [], endings: [] } })
             .catch(() => ({ data: { openings: [], endings: [] } }));
 
-        // Запрос к Jikan API за связями (предыстории и продолжения для кнопок сезонов)
-        const relationsPromise = fetchTimeout(`https://api.jikan.moe/v4/anime/${animeId}/relations`, 3000)
-            .then(res => res.ok ? res.json() : { data: [] })
-            .catch(() => ({ data: [] }));
-
         // Ждем выполнения всех дополнительных запросов
-        const [_, charsResult, themesResult, relationsResult] = await Promise.all([tmdbPromise, charactersPromise, themesPromise, relationsPromise]);
+        const [_, charsResult, themesResult] = await Promise.all([tmdbPromise, charactersPromise, themesPromise]);
 
         // Мета-информация (собираем ПОСЛЕ ответа от TMDB)
         const metaElement = document.createElement('div');
@@ -790,154 +783,68 @@ async function showAnimeDetails(animeId, passedRelations = [], isRelatedSwitch =
         loadPlayer(1);
 
         // ДОБАВЛЯЕМ СПИСОК СВЯЗАННОГО АНИМЕ СНИЗУ ПЛЕЕРА
-        const hasRelations = (relationsResult && relationsResult.data && relationsResult.data.length > 0) || (passedRelations && passedRelations.length > 0);
-        
-        if (hasRelations) {
-            const relationsWrapper = document.createElement('div');
-            relationsWrapper.style.width = '100vw';
-            relationsWrapper.style.paddingBottom = '40px';
-            
-            let relatedQueue = []; // Очередь для фоновой подгрузки годов
-            
-            // Ограничиваем ширину (максимум 800px) и центрируем список
-            let relHTML = `<div style="max-width: 800px; margin: 0 auto; padding: 0 20px; box-sizing: border-box;">`;
-            relHTML += `<div class="related-list-container">`;
-            relHTML += `<div class="related-list-header">chronology</div>`;
-            
-            let combinedMap = new Map();
-            
-            // 1. Копируем переданную историю
-            if (passedRelations && passedRelations.length > 0) {
-                passedRelations.forEach(r => combinedMap.set(r.mal_id, { ...r, isCurrent: false }));
-            }
-            
-            // 2. Добавляем новые связи от текущего аниме
-            if (relationsResult && relationsResult.data) {
-                relationsResult.data.forEach(rel => {
-                    const relType = rel.relation;
-                    rel.entry.forEach(ent => {
-                        if (ent.type === 'anime') {
-                            if (!combinedMap.has(ent.mal_id)) {
-                                combinedMap.set(ent.mal_id, { mal_id: ent.mal_id, name: ent.name, relation: relType, isCurrent: false });
-                            } else {
-                                // Перезаписываем тип на более точный, если API его выдал
-                                let existing = combinedMap.get(ent.mal_id);
-                                if (['Prequel', 'Sequel'].includes(relType) || existing.relation === 'Franchise') {
-                                    existing.relation = relType;
-                                }
-                            }
-                        }
+        // Загружаем идеальное древо франшизы одним запросом с Shikimori
+        fetch(`https://shikimori.one/api/animes/${animeId}/franchise`)
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+                if (!data || !data.nodes) return;
+                
+                // Отфильтровываем мангу, ранобэ и прочую литературу, оставляем только аниме
+                const invalidKinds = ['manga', 'light_novel', 'novel', 'one_shot', 'doujin', 'manhwa', 'manhua', 'oel'];
+                const animeNodes = data.nodes.filter(n => !invalidKinds.includes(n.kind));
+
+                if (animeNodes.length <= 1) return; // Нет франшизы, только мы сами
+
+                // Сортируем: сначала по году выхода, если года равны - по ID (в порядке добавления в базу)
+                animeNodes.sort((a, b) => {
+                    const yearA = a.year || 9999;
+                    const yearB = b.year || 9999;
+                    if (yearA !== yearB) return yearA - yearB;
+                    return a.id - b.id;
+                });
+
+                const relationsWrapper = document.createElement('div');
+                relationsWrapper.style.width = '100vw';
+                relationsWrapper.style.paddingBottom = '40px';
+                
+                let relHTML = `<div style="max-width: 800px; margin: 0 auto; padding: 0 20px; box-sizing: border-box;">`;
+                relHTML += `<div class="related-list-container" id="chronology-list">`;
+                relHTML += `<div class="related-list-header">chronology</div>`;
+                
+                animeNodes.forEach((node, index) => {
+                    const isCurrent = node.id === parseInt(animeId);
+                    const activeClass = isCurrent ? ' current-item' : '';
+                    const yearText = node.year || 'TBA';
+                    const displayType = node.kind === 'movie' ? 'Movie' : 'Collection';
+
+                    relHTML += `
+                        <div class="related-item${activeClass}" data-id="${node.id}">
+                            <div class="related-content-wrapper">
+                                <div class="related-number">${index + 1}</div>
+                                <div class="related-left">
+                                    <div class="related-type">${displayType}</div>
+                                    <div class="related-name">${node.name}</div>
+                                </div>
+                            </div>
+                            <div class="related-year">${yearText}</div>
+                        </div>
+                    `;
+                });
+                
+                relHTML += `</div></div>`;
+                relationsWrapper.innerHTML = relHTML;
+                container.appendChild(relationsWrapper);
+                
+                const relatedItems = relationsWrapper.querySelectorAll('.related-item');
+                relatedItems.forEach(item => {
+                    item.addEventListener('click', () => {
+                        if (item.classList.contains('current-item')) return;
+                        const targetId = item.getAttribute('data-id');
+                        showAnimeDetails(targetId, true);
                     });
                 });
-            }
-            
-            // 3. Добавляем/обновляем текущее аниме
-            let currentYear = anime.year || (anime.aired && anime.aired.from ? new Date(anime.aired.from).getFullYear() : 'TBA');
-            globalAnimeYearCache[anime.mal_id] = currentYear; // сохраняем сразу в кеш
-            globalAnimeTypeCache[anime.mal_id] = anime.type; // сохраняем тип
-            combinedMap.set(anime.mal_id, { mal_id: anime.mal_id, name: anime.title, relation: 'CURRENT', isCurrent: true, year: currentYear });
-            
-            // 4. Сортируем
-            let unifiedList = Array.from(combinedMap.values());
-            
-            unifiedList.sort((a, b) => {
-                let yearA = globalAnimeYearCache[a.mal_id] || 9999;
-                let yearB = globalAnimeYearCache[b.mal_id] || 9999;
-                if (yearA === 'TBA') yearA = 9998;
-                if (yearB === 'TBA') yearB = 9998;
-                
-                if (yearA !== yearB && yearA !== 9999 && yearB !== 9999) {
-                    return yearA - yearB;
-                }
-                return a.mal_id - b.mal_id; // По умолчанию сортируем по ID (он почти всегда хронологичен)
-            });
-            
-            // Подготавливаем состояние для передачи в следующий клик
-            const nextListState = unifiedList.map(u => ({
-                ...u, 
-                isCurrent: false,
-                relation: u.relation === 'CURRENT' ? 'Franchise' : u.relation
-            }));
-            
-            unifiedList.forEach((ent, index) => {
-                if (!ent.isCurrent && !globalAnimeYearCache[ent.mal_id]) relatedQueue.push(ent.mal_id); 
-                const activeClass = ent.isCurrent ? ' current-item' : '';
-                const yearText = ent.isCurrent ? ent.year : (globalAnimeYearCache[ent.mal_id] || '...');
-                
-                let displayType = 'Collection';
-                if (globalAnimeTypeCache[ent.mal_id]) {
-                    displayType = globalAnimeTypeCache[ent.mal_id] === 'Movie' ? 'Movie' : 'Collection';
-                } else if (ent.name.toLowerCase().includes('movie')) {
-                    displayType = 'Movie';
-                }
-
-                relHTML += `
-                    <div class="related-item${activeClass}" data-id="${ent.mal_id}">
-                        <div class="related-content-wrapper">
-                            <div class="related-number">${index + 1}</div>
-                            <div class="related-left">
-                                <div class="related-type" id="type-${ent.mal_id}">${displayType}</div>
-                                <div class="related-name">${ent.name}</div>
-                            </div>
-                        </div>
-                        <div class="related-year" id="year-${ent.mal_id}">${yearText}</div>
-                    </div>
-                `;
-            });
-            
-            relHTML += `</div></div>`;
-            relationsWrapper.innerHTML = relHTML;
-            container.appendChild(relationsWrapper);
-            
-            const relatedItems = relationsWrapper.querySelectorAll('.related-item');
-            relatedItems.forEach(item => {
-                item.addEventListener('click', () => {
-                    if (item.classList.contains('current-item')) return; // Блокируем клик по текущему сезону
-                    const targetId = item.getAttribute('data-id');
-                    showAnimeDetails(targetId, nextListState, true); // Передаем накопленный список и флаг переключения
-                });
-            });
-
-            // Фоновая загрузка годов релиза
-            const fetchYears = async () => {
-                for (let id of relatedQueue) {
-                    // Если пользователь ушел со страницы — прерываем загрузку
-                    if (document.getElementById('details-view').classList.contains('hidden') || !document.getElementById(`year-${id}`)) break;
-                    
-                    if (globalAnimeYearCache[id]) {
-                        const yearEl = document.getElementById(`year-${id}`);
-                        if (yearEl) yearEl.textContent = globalAnimeYearCache[id];
-                        continue;
-                    }
-                    
-                    try {
-                        await new Promise(r => setTimeout(r, 450)); // Ограничение API (3 запроса в сек)
-                        const res = await fetch(`https://api.jikan.moe/v4/anime/${id}`);
-                        if (res.ok) {
-                            const data = await res.json();
-                            const yearEl = document.getElementById(`year-${id}`);
-                            if (yearEl && data.data) {
-                                let year = data.data.year;
-                                // Если точного года нет, пытаемся достать его из полной даты aired
-                                if (!year && data.data.aired && data.data.aired.from) {
-                                    year = new Date(data.data.aired.from).getFullYear();
-                                }
-                                const finalYear = year || 'TBA';
-                                globalAnimeYearCache[id] = finalYear; // Сохраняем в кэш
-                                yearEl.textContent = finalYear;
-                                
-                                globalAnimeTypeCache[id] = data.data.type;
-                                const typeEl = document.getElementById(`type-${id}`);
-                                if (typeEl) {
-                                    typeEl.textContent = data.data.type === 'Movie' ? 'Movie' : 'Collection';
-                                }
-                            }
-                        }
-                    } catch (e) {}
-                }
-            };
-            fetchYears();
-        }
+            })
+            .catch(err => console.error('Ошибка при загрузке франшизы:', err));
 
         // После успешной загрузки сбрасываем фиксированную высоту
         container.style.minHeight = 'auto';
